@@ -1,3 +1,4 @@
+<<<<<<< HEAD
  
 # decorators/class_decorators.py
 """
@@ -86,3 +87,7 @@ def add_performance_tracking(cls):
     setattr(cls, "get_metrics", get_metrics)
 
     return cls
+=======
+
+
+>>>>>>> 743ad887ede61acf5f34ae1f60e2c216fc7e3718
