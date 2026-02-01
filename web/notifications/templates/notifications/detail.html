@@ -1,0 +1,68 @@
+{% extends "notifications/base.html" %}
+{% block title %}Détails{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm mb-3">
+  <div class="card-header bg-secondary text-white">
+    Détails notification #{{ item.id }}
+  </div>
+  <div class="card-body">
+    <p><strong>Date :</strong> {{ item.created_at }}</p>
+    <p><strong>User :</strong> {{ item.user_id }}</p>
+    <p><strong>Email :</strong> {{ item.email|default:"-" }}</p>
+    <p><strong>Téléphone :</strong> {{ item.phone|default:"-" }}</p>
+    <p><strong>Type :</strong> {{ item.emergency_type }}</p>
+    <p><strong>Priorité :</strong> {{ item.priority }}</p>
+    <p><strong>Zone :</strong> {{ item.zone|default:"-" }}</p>
+    <p><strong>Message :</strong><br>{{ item.message }}</p>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header bg-dark text-white">
+    Tentatives de livraison
+  </div>
+  <div class="card-body">
+    {% if deliveries %}
+      <table class="table table-bordered table-sm align-middle">
+        <thead class="table-light">
+  <tr>
+    <th>Canal</th>
+    <th>Statut</th>
+    <th>Erreur</th>
+    <th>ID livraison</th>
+    <th>Action</th>
+  </tr>
+</thead>
+
+<tbody>
+  {% for d in deliveries %}
+  <tr>
+    <td>{{ d.channel }}</td>
+    <td>{{ d.status }}</td>
+    <td>{{ d.error|default:"-" }}</td>
+    <td class="text-muted">{{ d.delivery_id }}</td>
+    <td>
+      {% if d.status == "sent" or d.status == "pending_confirmation" %}
+        <form method="post" action="{% url 'confirm_delivery' d.delivery_id %}">
+          {% csrf_token %}
+          <button class="btn btn-sm btn-success" type="submit">Confirmer</button>
+        </form>
+      {% elif d.status == "confirmed" %}
+        <span class="text-success">Confirmé</span>
+        {% if d.confirmed_at %}<br><small class="text-muted">{{ d.confirmed_at }}</small>{% endif %}
+      {% else %}
+        <span class="text-muted">—</span>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</tbody>
+
+      </table>
+    {% else %}
+      <p class="text-muted">Aucune tentative enregistrée.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

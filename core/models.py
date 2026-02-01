@@ -1,15 +1,10 @@
- 
 # core/models.py
 """
 Modèles métier minimalistes pour la phase POO (sans Web/Docker).
 
-Objectif :
-- fournir des structures stables pour que les Mixins/Notifiers/Dispatcher
-  puissent fonctionner.
-- permettre la démonstration : priorité, canaux, confirmation.
-
-Cible de groupe (déduit du focus technique) :
-- Sécurité Campus : priorité, redondance, confirmation de livraison.
+Objectifs :
+- structures stables pour Mixins / Notifiers / Dispatcher
+- démonstration : priorité, canaux, fallback, confirmation de livraison
 """
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
@@ -21,6 +16,10 @@ from core.emergencies import EmergencyType
 
 
 class Priority(IntEnum):
+    """
+    Priorité unique (source de vérité).
+    Plus la valeur est grande, plus c'est urgent.
+    """
     LOW = 1
     MEDIUM = 2
     HIGH = 3
@@ -28,10 +27,20 @@ class Priority(IntEnum):
 
 
 class DeliveryStatus(str, Enum):
+    """
+    Statut d'une tentative de livraison.
+
+    SENT : envoi réussi
+    FAILED : échec d'envoi
+    PENDING_CONFIRMATION : envoyé mais attente confirmation (optionnel)
+    CONFIRMED : confirmation reçue (optionnel)
+    SKIPPED : canal ignoré (préférence / opt-out) (utile et propre)
+    """
     SENT = "sent"
     FAILED = "failed"
     PENDING_CONFIRMATION = "pending_confirmation"
     CONFIRMED = "confirmed"
+    SKIPPED = "skipped"
 
 
 @dataclass
@@ -57,7 +66,7 @@ class UserPreferences:
     """
     Préférences utilisateur :
     - enabled_channels : ordre préféré des canaux (ex: ["sms","email","push"])
-    - opt_out_types : types d'urgence désactivés (ex: [EmergencyType.ACADEMIC])
+    - opt_out_types : types d'urgence désactivés
     - language : langue préférée (optionnel)
     """
     enabled_channels: List[str] = field(default_factory=lambda: ["sms", "email", "push"])
@@ -69,7 +78,7 @@ class UserPreferences:
 class User:
     """
     Utilisateur cible.
-    Pour la phase POO, on garde simple et compatible:
+    Pour la phase POO, on garde simple :
     - email, phone, push_token : contacts
     - preferences : préférences de réception
     """
@@ -84,7 +93,11 @@ class User:
 class DeliveryResult:
     """
     Résultat d'une tentative d'envoi.
-    delivery_id sert pour la confirmation.
+
+    delivery_id : identifiant de livraison (sert pour confirmation)
+    status : DeliveryStatus
+    error : message d'erreur si FAILED
+    timestamp : horodatage
     """
     notification_id: str
     user_id: str
@@ -98,8 +111,7 @@ class DeliveryResult:
 class Channel:
     """
     Interface simple de canal.
-    Les canaux concrets (SMS/Email/Push) peuvent être des implémentations réelles
-    ou simulées (phase POO).
+    Les canaux concrets (SMS/Email/Push) peuvent être réels ou simulés (phase POO).
     """
     name: str = "channel"
 
@@ -110,8 +122,9 @@ class Channel:
 class BaseNotifier:
     """
     Classe de base des notificateurs.
-    - Pensée pour être combinée avec des Mixins (héritage multiple).
-    - __abstract__ permet à la métaclasse (plus tard) d'éviter l'enregistrement.
+
+    Conçue pour être combinée avec des Mixins (héritage multiple).
+    __abstract__ peut être utilisé par une métaclasse pour éviter l'enregistrement.
 
     Contrat :
     - send(notification, user) -> List[DeliveryResult]
@@ -119,11 +132,8 @@ class BaseNotifier:
     __abstract__ = True
 
     def log(self, message: str) -> None:
-        # Implémentation par défaut, peut être enrichie par LoggingMixin
+        # Implémentation par défaut, enrichissable par LoggingMixin
         print(message)
 
     def send(self, notification: Notification, user: User) -> List[DeliveryResult]:
-        """
-        Base minimaliste : à surcharger par les Mixins et/ou un dispatcher.
-        """
         raise NotImplementedError("BaseNotifier.send doit être fourni par un notificateur concret.")

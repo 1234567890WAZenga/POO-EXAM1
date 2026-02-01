@@ -1,1 +1,11 @@
- 
+# Django (compatible Python 3.10 à 3.14)
+Django>=5.2,<6.0
+
+# API REST
+djangorestframework>=3.15,<4.0
+
+# Tests
+pytest>=7.0
+
+# Typing
+typing-extensions>=4.0

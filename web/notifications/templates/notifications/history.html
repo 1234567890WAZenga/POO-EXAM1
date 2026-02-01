@@ -1,0 +1,44 @@
+{% extends "notifications/base.html" %}
+{% block title %}Historique{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header bg-dark text-white">
+    Historique des notifications
+  </div>
+  <div class="card-body">
+    {% if items %}
+      <table class="table table-bordered table-sm align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Date</th>
+            <th>User</th>
+            <th>Type</th>
+            <th>Priorité</th>
+            <th>Statut global</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for n in items %}
+          <tr>
+            <td>{{ n.created_at }}</td>
+            <td>{{ n.user_id }}</td>
+            <td>{{ n.emergency_type }}</td>
+            <td>{{ n.priority }}</td>
+            <td>{{ n.global_status }}</td>
+            <td>
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'detail' n.id %}">
+                Détails
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="text-muted">Aucune notification enregistrée.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

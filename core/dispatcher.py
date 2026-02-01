@@ -1,41 +1,53 @@
+"""
+core/dispatcher.py
 
+Dispatcher :
+- Maintient une file de priorité basée sur Notification.priority
+- Traite dans l'ordre URGENT -> LOW
+- Appelle le notifier concret qui gère canaux + retry + fallback
+"""
+from dataclasses import dataclass
+from typing import List
+
+from core.models import Notification, User, DeliveryResult
 from priority.priority_handler import PriorityQueue
-# Supposons des imports depuis d'autres fichiers :
-# ex. from core.models import DeliveryResult, BaseNotifier
+
+
+@dataclass
+class DispatchJob:
+    """
+    Un job = une notification à livrer à un user avec un notifier.
+    """
+    notification: Notification
+    user: User
+    notifier: object  # EmergencyNotifier ou autre
+
 
 class Dispatcher:
-    def __init__(self):
+    def __init__(self) -> None:
         self.priority_queue = PriorityQueue()
-        self.channels = ['SMS', 'Email', 'Push']  # Ordre de repli (fallback)
 
-    # Partie ordonnancement (ta responsabilité)
-    def schedule(self, notifier):
+    def schedule(self, notification: Notification, user: User, notifier: object) -> None:
         """
-        Ajoute un notifier à la file de priorité.
-        Générique : accepte tout type de notifier.
-        Optimisé : pour la sécurité du campus, priorise URGENT
-        (ex. : alerte d’intrusion).
+        Ajoute un job dans la file en utilisant notification.priority.
         """
-        self.priority_queue.add(notifier)
+        job = DispatchJob(notification=notification, user=user, notifier=notifier)
+        self.priority_queue.add(job, priority=notification.priority)
 
-    def dispatch(self):
+    def dispatch(self) -> List[DeliveryResult]:
         """
-        Traite la file par ordre de priorité.
-        Pour chaque notifier : essaie les canaux disponibles avec mécanisme de repli.
+        Traite la file par priorité.
+        Agrège tous les DeliveryResult.
         """
-        results = []
-        while notifier := self.priority_queue.get_next():
-            success = False
-            for channel in self.channels:
-                if notifier.user.preferences.opt_in.get(channel, False):
-                    try:
-                        notifier.send(notifier.message)  # Utilise les décorateurs et mixins
-                        results.append(DeliveryResult(success=True, channel=channel))
-                        success = True
-                        break
-                    except Exception as e:
-                        print(f"Repli depuis le canal {channel} dans le contexte de la sécurité du campus : {e}")
-            if not success:
-                results.append(DeliveryResult(success=False, channel="Tous les canaux ont échoué"))
-        return results
+        all_results: List[DeliveryResult] = []
 
+        while True:
+            job = self.priority_queue.get_next()
+            if job is None:
+                break
+
+            # notifier.send retourne une liste (tentatives fallback)
+            results = job.notifier.send(job.notification, job.user)
+            all_results.extend(results)
+
+        return all_results

@@ -1,28 +1,34 @@
-import heapq
-from enum import Enum
+"""
+priority/priority_handler.py
 
-class Priority(Enum):
-    URGENT = 0  # Ex : intrusion sur le campus
-    HIGH = 1    # Ex : incendie
-    MEDIUM = 2  # Ex : alerte médicale
-    LOW = 3     # Ex : maintenance
+File de priorité stable.
+- Utilise heapq
+- Ordre : URGENT (4) en premier, LOW (1) en dernier
+"""
+
+from __future__ import annotations
+
+import heapq
+from typing import Any, List, Tuple
+
+from core.models import Priority
+
 
 class PriorityQueue:
-    """
-    File de priorité basée sur heapq.
-    Générique : utilisable pour tout système de notification.
-    Optimisée : basée sur l'énumération Priority, idéale pour trier des alertes de campus.
-    """
-    def __init__(self):
-        self.queue = []  # (valeur_priorité, index, notifier) pour éviter les égalités
-        self.index = 0
+    def __init__(self) -> None:
+        self._heap: List[Tuple[int, int, Any]] = []
+        self._index = 0
 
-    def add(self, notifier):
-        heapq.heappush(self.queue, (notifier.priority.value, self.index, notifier))
-        self.index += 1
+    def add(self, item: Any, priority: Priority) -> None:
+        """
+        heapq sort du plus petit au plus grand.
+        Comme Priority.URGENT=4 doit passer en premier,
+        on stocke la priorité négative.
+        """
+        heapq.heappush(self._heap, (-int(priority), self._index, item))
+        self._index += 1
 
-    def get_next(self):
-        if self.queue:
-            return heapq.heappop(self.queue)[2]
-        return None
-
+    def get_next(self) -> Any | None:
+        if not self._heap:
+            return None
+        return heapq.heappop(self._heap)[2]

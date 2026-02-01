@@ -1,105 +1,101 @@
-# mixins/channels.py
 """
-Mixins de canaux (SMS/Email/Push) + LoggingMixin.
+mixins/channels.py
 
-Objectif :
-- comportements réutilisables
-- héritage multiple + coopération via super()
-- préparation d'une démonstration MRO claire
+Mixins de canaux (simulation) pour la démo.
+But : prouver que l’héritage multiple + fallback + préférences fonctionnent.
 
-Cible (déduit du focus technique) :
-- Sécurité Campus : canaux redondants, fallback, confirmation.
+Règles de simulation :
+- SMS : nécessite user.phone
+- Email : nécessite user.email
+- Push : nécessite user.push_token
+
+Chaque mixin renvoie un DeliveryResult.
 """
-from typing import Dict, List, Optional
 
-from core.models import Channel, DeliveryResult, DeliveryStatus, Notification, User
+from __future__ import annotations
+
+from typing import List
+
+from core.models import DeliveryResult, DeliveryStatus, Notification, User
 
 
 class LoggingMixin:
-    """
-    Logging cooperatif :
-    - on log ici puis on laisse les autres classes/mixins compléter via super().
-    """
+    """Ajoute un log simple. Peut être combiné avec d'autres mixins."""
     def log(self, message: str) -> None:
         print(f"[LOG] {message}")
-        # Appel cooperatif : si une autre classe plus loin définit log()
-        # elle sera appelée (ou pas) selon le MRO.
-        try:
-            super().log(message)  # type: ignore[misc]
-        except AttributeError:
-            # Si personne d'autre n'implémente log(), on s'arrête proprement.
-            pass
+        super().log(message)  # coopération MRO
 
 
 class ChannelRegistryMixin:
     """
-    Mixin utilitaire : gère un registre local de canaux.
+    Définit l’ordre des canaux supportés.
+    Permet aussi au fallback de parcourir les canaux.
     """
-    def __init__(self, *args, **kwargs):
-        self._channels: Dict[str, Channel] = {}
-        super().__init__(*args, **kwargs)  # coopération MRO
+    supported_channels = ["sms", "email", "push"]
 
-    def register_channel(self, channel: Channel) -> None:
-        if not hasattr(channel, "name") or not channel.name:
-            raise ValueError("Le channel doit avoir un attribut name non vide.")
-        self._channels[channel.name] = channel
-
-    def get_channel(self, name: str) -> Optional[Channel]:
-        return self._channels.get(name)
-
-    def list_channels(self) -> List[str]:
-        return list(self._channels.keys())
+    def get_supported_channels(self) -> List[str]:
+        return list(self.supported_channels)
 
 
 class SMSMixin:
-    """
-    Ajoute la capacité d'envoyer via SMS.
-    Suppose qu'un Channel nommé 'sms' est enregistré.
-    """
+    """Canal SMS simulé."""
     def send_sms(self, notification: Notification, user: User) -> DeliveryResult:
-        ch = self.get_channel("sms")  # type: ignore[attr-defined]
-        if ch is None:
+        if not user.phone:
             return DeliveryResult(
                 notification_id=notification.notification_id,
                 user_id=user.user_id,
                 channel="sms",
                 status=DeliveryStatus.FAILED,
-                error="SMS channel not configured",
+                error="Phone manquant: SMS impossible",
             )
-        return ch.send(notification, user)
+
+        # Ici on simule un succès
+        return DeliveryResult(
+            notification_id=notification.notification_id,
+            user_id=user.user_id,
+            channel="sms",
+            status=DeliveryStatus.SENT,
+            error=None,
+        )
 
 
 class EmailMixin:
-    """
-    Ajoute la capacité d'envoyer via Email.
-    Suppose qu'un Channel nommé 'email' est enregistré.
-    """
+    """Canal Email simulé."""
     def send_email(self, notification: Notification, user: User) -> DeliveryResult:
-        ch = self.get_channel("email")  # type: ignore[attr-defined]
-        if ch is None:
+        if not user.email:
             return DeliveryResult(
                 notification_id=notification.notification_id,
                 user_id=user.user_id,
                 channel="email",
                 status=DeliveryStatus.FAILED,
-                error="Email channel not configured",
+                error="Email manquant: envoi email impossible",
             )
-        return ch.send(notification, user)
+
+        return DeliveryResult(
+            notification_id=notification.notification_id,
+            user_id=user.user_id,
+            channel="email",
+            status=DeliveryStatus.SENT,
+            error=None,
+        )
 
 
 class PushMixin:
-    """
-    Ajoute la capacité d'envoyer via Push.
-    Suppose qu'un Channel nommé 'push' est enregistré.
-    """
+    """Canal Push simulé."""
     def send_push(self, notification: Notification, user: User) -> DeliveryResult:
-        ch = self.get_channel("push")  # type: ignore[attr-defined]
-        if ch is None:
+        if not user.push_token:
             return DeliveryResult(
                 notification_id=notification.notification_id,
                 user_id=user.user_id,
                 channel="push",
                 status=DeliveryStatus.FAILED,
-                error="Push channel not configured",
+                error="Push token manquant: push impossible",
             )
-        return ch.send(notification, user)
+
+        return DeliveryResult(
+            notification_id=notification.notification_id,
+            user_id=user.user_id,
+            channel="push",
+            status=DeliveryStatus.SENT,
+            error=None,
+        )
